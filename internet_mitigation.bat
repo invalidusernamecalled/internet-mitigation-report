@@ -91,4 +91,6 @@ echo:           == Interface is not connected ==
 echo:  1. Try connecting to wifi or ethernet [likely]
 echo:  2. Try resetting wifi/ethernet adapter in order to reconnect properly
 echo:  3. Install correct drivers for the wifi/ethernet interface [unlikely]
+if %FLAG_STAY_OPEN%==1 (for /l %%i in (1,1,5) do echo:) & PAUSE >NUL
 goto :eof
+
