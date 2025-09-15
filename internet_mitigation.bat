@@ -63,13 +63,16 @@ if "%ip_1%" == "" (call :ip_is_not_set)
 if "%ip_1%" NEQ "" if "%ip_1%"=="169" (call :ip_config_failed) else (echo:[V] IP Address is set as %ip_address%&set /a points+=1)
 if "%gateway%"=="" (call :gateway_is_missing) else (echo:[V] Gateway: %gateway%&set /a points+=1)
 if "%dns_server%"=="" (call: dns_is_missing) else (if /i "%dns_server%"=="none" ( call :dns_is_missing ) else (echo:[V] Dns server: %dns_server% & set /a points+=1 & call :print_dns))
-if %gateway_is_reachable%==1 (set /a points+=1&echo:[V] Gateway . . . . . . . . : reachable) else (if "%gateway%" NEQ "" call :gateway_not_reachable)
 REM if "%dns_server%"=="" (if %internet_gateway_is_reachable%==1 (echo:[V] %FLAG_INTERNET_CONNECTION_GATEWAY% is reachable.) else (echo:    DNS Server is missing.&echo:^<^^^!^> ERROR: %FLAG_INTERNET_CONNECTION_GATEWAY% is not reachable.)) else (if %dns_is_reachable%==1 (echo:[V] Dns . . . . . . . . . . : reachable) else (echo:^<^^^!^> ERROR: Dns is not reachable.))
 echo:POINTS           ^ =        [%points%/6]
 if %FLAG_STAY_OPEN%==1 (for /l %%i in (1,1,5) do echo:) & pause >NUL
 goto :eof
 
+:print_gateway
+if %gateway_is_reachable%==1 (set /a points+=1&echo:[V] Gateway . . . . . . . . : reachable) else (if "%gateway%" NEQ "" call :gateway_not_reachable)
+exit /b
 :dns_is_missing
+call :print_gateway
 if %internet_gateway_is_reachable%==1 echo: Internet is working, but dns is not set, so websites not opening
 if %dns_is_reachable%==1  echo: '%FLAG_INTERNET_CONNECTION_GATEWAY%' is reachable, but dns is not set, so websites not opening
 exit /b
@@ -77,7 +80,8 @@ exit /b
 if "%is_dhcp%"=="No" echo: Check Static ip configuration, because No ip address is set
 exit /b
 :print_dns
-if %dns_is_reachable%==1 set /a points+=1
+call :print_gateway
+if %dns_is_reachable%==1 echo:[V] DNS . . . . . . . . . . : reachable & set /a points+=1
 if %dns_is_reachable%==0 echo:           == DNS Not Reachable: ==
 if %dns_is_reachable%==0 echo:  1. Check if DNS address entered is correct
 if %dns_is_reachable%==0 if %internet_gateway_is_reachable%==1 echo:  2. Since '%FLAG_INTERNET_CONNECTION_GATEWAY%' is in fact, reachable
