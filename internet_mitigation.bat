@@ -88,8 +88,8 @@ if "%is_dhcp%"=="No" echo: Check Make sure gateway has been configured in Static
 if "%is_dhcp%"=="Yes" echo: Check router configuration to make sure it is providing a Gateway
 exit /b
 :ip_config_failed
-if "%is_dhcp%"=="No" echo Router may have failed to provide IP, due to incompatible Static Ip configuration
-if "%is_dhcp%"=="Yes" echo Router has failed in IP configuration
+if "%is_dhcp%"=="No" echo  Router may have failed to provide IP, due to incompatible Static Ip configuration
+if "%is_dhcp%"=="Yes" echo  Router has failed in IP configuration
 exit /b
 :gateway_not_reachable
 echo:           == Gateway Not Reachable: ==
