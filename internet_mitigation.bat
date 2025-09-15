@@ -1,4 +1,5 @@
 @echo off & setlocal enabledelayedexpansion
+
 SET FLAG_STAY_OPEN=1
 
     set counters=0
@@ -31,17 +32,20 @@ call :check_ip_settings&call :check_gateway&call :check_internet_connection
 goto print_reports
 :check_gateway
 set gateway_is_reachable=0
-if "%gateway%" NEQ "" (ping -n 1 %GATEWAY% | find /i "ttl=" >NUL&&(set /a points+=1&set internet_gateway_is_reachable=1))
+if "%gateway%" NEQ "" (ping -n 1 %GATEWAY% | find /i "ttl=" >NUL&&(set gateway_is_reachable=1))
 exit /b
 :check_internet_connection
-if "%dns_server%" == "" (ping -n 1 %FLAG_INTERNET_CONNECTION_GATEWAY% | find /i "ttl=" >NUL&&(set /a points+=1&set internet_gateway_is_reachable=1)) else (ping -n 1 %dns_server% | find /i "ttl=" >NUL&&(set /a points+=1&set dns_is_reachable=1))
+ping -n 1 %FLAG_INTERNET_CONNECTION_GATEWAY% | find /i "ttl=" >NUL&&(set internet_gateway_is_reachable=1)
+ping -n 1 %dns_server% | find /i "ttl=" >NUL&&(set dns_is_reachable=1)
 exit /b
 :check_ip_settings
 set ip_address=
 set gateway=
 set dns_server=
 set ip_1=
-for /f "tokens=1,* delims=:" %%i in ('netsh interface ipv4 show config name^="!interfacename!" ^| findstr /ir "ip address[:] gateway[:]"') do for /f "tokens=1,2 delims= " %%b in ("%%i") do (if /i "%%b %%c"=="ip address" set ip_address=%%j&set /a points+=1)&(if /i "%%b %%c"=="default gateway" set gateway=%%j&set /a points+=1)
+set /a count_ip=0
+for /f "tokens=1,* delims=:" %%i in ('netsh interface ipv4 show config name^="!interfacename!" ^| findstr /ir "ip address[:] gateway[:]"') do for /f "tokens=1,2 delims= " %%b in ("%%i") do (if /i "%%b %%c"=="ip address" set ip_address=%%j&set /a count_ip+=1)&(if /i "%%b %%c"=="default gateway" set gateway=%%j)
+if %count_ip% GTR 1 (echo:WARNING: Multiple IP addresses are configured^^^!)
 for /f "tokens=2  delims=:" %%i in ('netsh interface ipv4 show config name^="!interfacename!" ^| findstr /ir "DNS"') do set dns_server=%%i
 if "%dns_server%" NEQ "" for /f  "tokens=1 delims= " %%i in ("%dns_server%") do set dns_server=%%i
 if "%gateway%" NEQ "" for /f  "tokens=1 delims= " %%i in ("%gateway%") do set gateway=%%i
@@ -51,12 +55,11 @@ exit /b
 :print_reports
 if "%is_dhcp%"=="Yes" echo     IP Configuration: DHCP
 if "%is_dhcp%"=="No" echo     IP Configuration: Static
-
 if "%ip_1%" == "" (call :ip_is_not_set)
 if "%ip_1%" NEQ "" if "%ip_1%"=="169" (call :ip_config_failed) else (echo:[V] IP Address is set as %ip_address%&set /a points+=1)
-if "%gateway%"=="" (call :gateway_ip_missing) else (echo:[V] Gateway: %gateway%)
-if "%dns_server%"=="" (call: dns_is_missing) else (if /i "%dns_server%"=="none" ( call :dns_is_missing ) else (echo:[V] Dns server: %dns_server%))
-if %internet_gateway_is_reachable%==1 (echo:[V] Gateway . . . . . . . . : reachable) else (call :gateway_not_reachable)
+if "%gateway%"=="" (call :gateway_ip_missing) else (echo:[V] Gateway: %gateway%&set /a points+=1)
+if "%dns_server%"=="" (call: dns_is_missing) else (if /i "%dns_server%"=="none" ( call :dns_is_missing ) else (echo:[V] Dns server: %dns_server% & set /a points+=1 & call :print_dns))
+if %internet_gateway_is_reachable%==1 (set /a points+=1&echo:[V] Gateway . . . . . . . . : reachable) else (call :gateway_not_reachable)
 REM if "%dns_server%"=="" (if %internet_gateway_is_reachable%==1 (echo:[V] %FLAG_INTERNET_CONNECTION_GATEWAY% is reachable.) else (echo:    DNS Server is missing.&echo:^<^^^!^> ERROR: %FLAG_INTERNET_CONNECTION_GATEWAY% is not reachable.)) else (if %dns_is_reachable%==1 (echo:[V] Dns . . . . . . . . . . : reachable) else (echo:^<^^^!^> ERROR: Dns is not reachable.))
 echo:POINTS           ^ =        [%points%/6]
 if %FLAG_STAY_OPEN%==1 (for /l %%i in (1,1,5) do echo:) & pause >NUL
@@ -68,6 +71,12 @@ if %dns_is_reachable%==1  echo: Internet is working, but dns is not set, so webs
 exit /b
 :ip_is_not_set
 if "%is_dhcp%"=="No" echo: Check Static ip configuration, because No ip address is set
+exit /b
+:print_dns
+if %dns_is_reachable%==1 set /a points+=1
+if %dns_is_reachable%==0 echo:           == DNS Not Reachable: ==
+if %dns_is_reachable%==0 echo:  1. Check if DNS address entered is correct
+if %dns_is_reachable%==0 if %internet_gateway_is_reachable%==1 echo:  2. Since '%FLAG_INTERNET_CONNECTION_GATEWAY%' is in fact, reachable
 exit /b
 :gateway_is_missing
 if "%is_dhcp%"=="No" echo: Check Make sure gateway has been configured in Static ip configuration
@@ -91,6 +100,4 @@ echo:           == Interface is not connected ==
 echo:  1. Try connecting to wifi or ethernet [likely]
 echo:  2. Try resetting wifi/ethernet adapter in order to reconnect properly
 echo:  3. Install correct drivers for the wifi/ethernet interface [unlikely]
-if %FLAG_STAY_OPEN%==1 (for /l %%i in (1,1,5) do echo:) & PAUSE >NUL
 goto :eof
-
